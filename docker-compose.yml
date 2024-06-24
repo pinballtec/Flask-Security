@@ -16,5 +16,29 @@ services:
     environment:
       FLASK_APP: app
       FLASK_RUN_HOST: 0.0.0.0
+      FLASK_ENV: development
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+  tests:
+    build: ./backend
+    volumes:
+      - ./backend:/app
+    environment:
+      - FLASK_ENV=testing
+      - SQLALCHEMY_DATABASE_URI=postgresql://user:password@db:5432/mydatabase
+    depends_on:
+      - db
+    command: pytest tests/
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=pgadmin4@pgadmin.org
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    ports:
+      - "5050:80"
     depends_on:
       - db

@@ -151,3 +151,4 @@ $RECYCLE.BIN/
 logs/
 *.log
 .idea
+test_pass.py
