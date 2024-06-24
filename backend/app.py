@@ -7,16 +7,19 @@ from flask_migrate import Migrate
 from flask_babel import Babel
 from wtforms import StringField
 import uuid
+from dotenv import load_dotenv
 from flask_wtf import CSRFProtect
 from flask_login import login_user
 import os
 
+load_dotenv()
+
 # Initialize Flask application
 app = Flask(__name__)
 app.config['DEBUG'] = True
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI', 'postgresql://user:password@db:5432/mydatabase')
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'supersecretkey')
-app.config['SECURITY_PASSWORD_SALT'] = os.getenv('SECURITY_PASSWORD_SALT', 'somesalt')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI')
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+app.config['SECURITY_PASSWORD_SALT'] = os.getenv('SECURITY_PASSWORD_SALT')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECURITY_REGISTERABLE'] = True
 app.config['SECURITY_SEND_REGISTER_EMAIL'] = False
@@ -217,4 +220,4 @@ def signin():
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
 
-# TODO: 1) Tests update 2) Maybe frontend 3) CI\CD setup Maybe # 5) REadme
+# TODO: 2) Maybe frontend 3) CI\CD setup Maybe
