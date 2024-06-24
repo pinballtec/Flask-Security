@@ -9,7 +9,7 @@ from wtforms import StringField
 import uuid
 from dotenv import load_dotenv
 from flask_wtf import CSRFProtect
-from flask_login import login_user
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 import os
 
 load_dotenv()
@@ -27,12 +27,14 @@ app.config['SECURITY_RECOVERABLE'] = True  # Enable password recovery
 app.config['BABEL_DEFAULT_LOCALE'] = 'en'
 app.config['BABEL_DEFAULT_TIMEZONE'] = 'UTC'
 app.config['WTF_CSRF_ENABLED'] = False
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'supersecretjwtkey')
 
 # Initialize extensions
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 babel = Babel(app)
 csrf = CSRFProtect(app)
+jwt = JWTManager(app)
 
 # Define the association table for many-to-many relationship between users and roles
 roles_users = db.Table('roles_users',
@@ -74,13 +76,15 @@ class ExtendedRegisterForm(RegisterForm):
 
 # Define extended registration form
 @app.route('/')
-@login_required
+@jwt_required
 def index() -> str:
     """Home page accessible only to logged in users."""
-    return 'Home Page'
+    current_user = get_jwt_identity()
+    return f'Hello, {current_user}!'
 
 
 @app.route('/admin')
+@jwt_required
 @roles_required('admin')
 def admin() -> str:
     """Admin page accessible only to users with 'admin' role."""
@@ -89,6 +93,7 @@ def admin() -> str:
 
 
 @app.route('/admin/deactivate/<int:user_id>', methods=['POST'])
+@jwt_required
 @roles_required('admin')
 def deactivate_user(user_id):
     """Deactivate a user account by setting 'active' to False."""
@@ -97,10 +102,11 @@ def deactivate_user(user_id):
         user.active = False
         db.session.commit()
         return jsonify({"message": "User deactivated successfully."}), 200
-    return jsonify({"message": "User not found."}), 40
+    return jsonify({"message": "User not found."}), 404
 
 
 @app.route('/admin/change_role/<int:user_id>/<role_name>', methods=['POST'])
+@jwt_required
 @roles_required('admin')
 def change_user_role(user_id, role_name):
     """Change the role of a user."""
@@ -118,6 +124,7 @@ def change_user_role(user_id, role_name):
 
 
 @app.route('/admin/delete_user/<int:user_id>', methods=['DELETE'])
+@jwt_required
 @roles_required('admin')
 def delete_user(user_id):
     """Delete a user from the database."""
@@ -130,7 +137,8 @@ def delete_user(user_id):
 
 
 @app.route('/admin/users', methods=['GET'])
-# @roles_required('admin')
+@jwt_required
+@roles_required('admin')
 def get_users():
     """Get a list of all users."""
     users = User.query.all()
@@ -198,26 +206,20 @@ def signin():
     """Sign in an existing user."""
     data = request.json
     user = User.query.filter_by(email=data.get('email')).first()
-    if user:
-        if verify_password(data.get('password'), user.password):
-            # Role check
-            if not user.roles:
-                role = Role.query.filter_by(name='user').first()
-                if not role:
-                    role = Role(name='user')
-                    db.session.add(role)
-                    db.session.commit()
-                user.roles.append(role)
+    if user and verify_password(data.get('password'), user.password):
+        # Role check
+        if not user.roles:
+            role = Role.query.filter_by(name='user').first()
+            if not role:
+                role = Role(name='user')
+                db.session.add(role)
                 db.session.commit()
-            login_user(user)
-            return jsonify({"message": "User logged in successfully."}), 200
-        else:
-            return jsonify({"message": "Wrong password."}), 400
-    else:
-        return jsonify({"message": "User doesn't exist."}), 404
+            user.roles.append(role)
+            db.session.commit()
+        access_token = create_access_token(identity=user.email)
+        return jsonify(access_token=access_token), 200
+    return jsonify({"message": "Invalid email or password."}), 401
 
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
-
-# TODO: 2) Maybe frontend 3) CI\CD setup Maybe
