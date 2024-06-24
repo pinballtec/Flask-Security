@@ -10,6 +10,7 @@ import uuid
 from dotenv import load_dotenv
 from flask_wtf import CSRFProtect
 from flask_login import login_user
+from flask_cors import CORS
 import os
 
 load_dotenv()
@@ -33,6 +34,7 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 babel = Babel(app)
 csrf = CSRFProtect(app)
+CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
 
 # Define the association table for many-to-many relationship between users and roles
 roles_users = db.Table('roles_users',
